@@ -10,8 +10,15 @@ class_page = 'http://e-learning.cnu.ac.kr/lms/class/classroom/doViewClassRoom_ne
 course_page = 'http://e-learning.cnu.ac.kr/lms/class/courseSchedule/doListView.dunet'
 
 
+def error(msg, place, kill=True):
+    print('[*] 치명적인 오류가 발생했습니다')
+    print(f'[*] {msg} ({place})')
+    if kill:
+        exit(1)
+
+
 def getDataFromCourse(course):
-    return ' '.join(course.text.split()[:-1]), course['class_no'], {
+    return ' '.join(course.text.split()[:-1]), course['course_id'], course['class_no'], {
         'mnid': "201008254671",
         'course_id': course['course_id'],
         'class_no': course['class_no'],
@@ -43,23 +50,26 @@ def getDataFromVideoList(video_list):
         for i in range(0, len(text_list), 3)]
 
 
-if __name__ == '__main__':
-    # Initialization
-    session = requests.session()
-
-    # Login Process
-    user_id, user_pw = '202002488', '010618'
-    data = getDataFromLogin(user_id, user_pw)
+def login_process(userId, userPw):
+    data = getDataFromLogin(userId, userPw)
     res = session.post(url=cnu_login, data=data)
     res.raise_for_status()
     res = session.get(url=cnu_main)
     res.raise_for_status()
+    ret = BeautifulSoup(res.text, 'html.parser')
+    if ret.html.body is None:
+        # TODO 로그인은 에러가 아님. 반복문 추가바람
+        error('로그린 에러', 'login_process')
 
-    main_soup = BeautifulSoup(res.text, 'html.parser')
-    if main_soup.html.body is None:
-        print('로그인 실패')  # TODO
-    for class_ in main_soup.find_all('a', class_='classin2'):
-        class_name, class_no, data = getDataFromCourse(class_)
+    return ret
+
+
+def data_process(soup):
+    database_ = {}
+    for class_ in soup.find_all('a', class_='classin2'):
+        class_name, class_id, class_no, data = getDataFromCourse(class_)
+        # subject 기록
+        database_[class_name] = {'name': class_name, 'no': class_no, 'id': class_id}
 
         res = session.post(url=class_page, data=data)
         res.raise_for_status()
@@ -67,10 +77,21 @@ if __name__ == '__main__':
         res.raise_for_status()
 
         course_soup = BeautifulSoup(res.text, 'html.parser')
-        course_list = getDataFromVideoList(course_soup.find_all(class_='ag_c pd_ln'))
-        print(class_name)
-        pprint(course_list)
 
-        # class_soup = BeautifulSoup(res.text, 'html.parser')
-        # print(class_soup)
-        # input('next')
+        # 강의수강
+        database_[class_name]['lecture'] = getDataFromVideoList(course_soup.find_all(class_='ag_c pd_ln'))
+        database_[class_name]['notice'] = None  # TODO 과목공지 만들 것
+        database_[class_name]['assignment'] = None  # TODO 과제제출 만들 것
+    return database_
+
+
+if __name__ == '__main__':
+    # Initialization
+    session = requests.session()
+
+    # Login Process
+    user_id, user_pw = '202002570', '010107'
+    main_soup = login_process(user_id, user_pw)
+
+    database = data_process(main_soup)
+    pprint(database)
