@@ -4,11 +4,6 @@ from pprint import pprint
 import requests
 from bs4 import BeautifulSoup
 
-cnu_login = 'https://e-learning.cnu.ac.kr/login/doGetUserCountId.dunet'
-cnu_main = 'http://e-learning.cnu.ac.kr/lms/myLecture/doListView.dunet'
-class_page = 'http://e-learning.cnu.ac.kr/lms/class/classroom/doViewClassRoom_new.dunet'
-course_page = 'http://e-learning.cnu.ac.kr/lms/class/courseSchedule/doListView.dunet'
-
 
 def error(msg, place, kill=True):
     print('[*] 치명적인 오류가 발생했습니다')
@@ -51,6 +46,8 @@ def getDataFromVideoList(video_list):
 
 
 def login_process(userId, userPw):
+    cnu_login = 'https://e-learning.cnu.ac.kr/login/doGetUserCountId.dunet'
+    cnu_main = 'http://e-learning.cnu.ac.kr/lms/myLecture/doListView.dunet'
     data = getDataFromLogin(userId, userPw)
     res = session.post(url=cnu_login, data=data)
     res.raise_for_status()
@@ -60,26 +57,36 @@ def login_process(userId, userPw):
     if ret.html.body is None:
         # TODO 로그인은 에러가 아님. 반복문 추가바람
         error('로그린 에러', 'login_process')
-
     return ret
+
+
+def getLecture(data):
+    course_page = 'http://e-learning.cnu.ac.kr/lms/class/courseSchedule/doListView.dunet'
+    res = session.post(url=course_page, data=data)
+    res.raise_for_status()
+    lecture_soup = BeautifulSoup(res.text, 'html.parser')
+    return getDataFromVideoList(lecture_soup.find_all(class_='ag_c pd_ln'))
 
 
 def data_process(soup):
     database_ = {}
     for class_ in soup.find_all('a', class_='classin2'):
+        class_page = 'http://e-learning.cnu.ac.kr/lms/class/classroom/doViewClassRoom_new.dunet'
         class_name, class_id, class_no, data = getDataFromCourse(class_)
         # subject 기록
-        database_[class_name] = {'name': class_name, 'no': class_no, 'id': class_id}
+        database_[class_name] = {'no': class_no, 'id': class_id}
 
         res = session.post(url=class_page, data=data)
         res.raise_for_status()
-        res = session.post(url=course_page, data=data)
-        res.raise_for_status()
-
-        course_soup = BeautifulSoup(res.text, 'html.parser')
 
         # 강의수강
-        database_[class_name]['lecture'] = getDataFromVideoList(course_soup.find_all(class_='ag_c pd_ln'))
+        database_[class_name]['lecture'] = getLecture(data)
+
+        # # TODO REMOVE THIS
+        data['mnid'] = '201008945595'
+        # res = session.post(data=data)
+        # # TODO END
+
         database_[class_name]['notice'] = None  # TODO 과목공지 만들 것
         database_[class_name]['assignment'] = None  # TODO 과제제출 만들 것
     return database_
