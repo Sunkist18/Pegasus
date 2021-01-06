@@ -4,8 +4,19 @@ from pprint import pprint
 import requests
 from bs4 import BeautifulSoup
 
+
+class Version:
+    def __init__(self, g, s, b):
+        self.g = g
+        self.s = s
+        self.b = b
+
+    def __eq__(self, other):
+        return True if self.g > other.g else True if self.s > other.s else True if self.b >= other.b else false
+
+
 # OPTIONS
-VERSION = '1.0.0'
+VERSION = Version(1, 0, 0)
 HIDE_IP = False
 
 
@@ -107,6 +118,10 @@ if __name__ == '__main__':
     # Initialization
     session = requests.session()
 
+    version = session.get('https://raw.githubusercontent.com/Sunkist18/Pegasus/master/current_version').text
+    setup = {key: value for key, value in list(map(lambda x: x.split('='), version.split('\n')))}
+    print(setup)
+    exit(0)
     # Login Process
     user_id, user_pw = '202002488', '010618'
     main_soup = login_process(user_id, user_pw)
