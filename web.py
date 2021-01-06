@@ -83,8 +83,9 @@ def data_process(soup):
         database_[class_name]['lecture'] = getLecture(data)
 
         # # TODO REMOVE THIS
+
         data['mnid'] = '201008945595'
-        # res = session.post(data=data)
+        res = session.post(data=data)
         # # TODO END
 
         database_[class_name]['notice'] = None  # TODO 과목공지 만들 것
