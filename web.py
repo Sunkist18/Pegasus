@@ -117,9 +117,10 @@ def data_process(soup):
 if __name__ == '__main__':
     # Initialization
     session = requests.session()
+    version = session.get('https://raw.githubusercontent.com/Sunkist18/Pegasus/master/current_version')
+    version.raise_for_status()
 
-    version = session.get('https://raw.githubusercontent.com/Sunkist18/Pegasus/master/current_version').text
-    setup = {key: value for key, value in list(map(lambda x: x.split('='), version.split('\n')))}
+    setup = {key: value for key, value in list(map(lambda x: x.split('='), version.text.split('\n')))}
     print(setup)
     exit(0)
     # Login Process
